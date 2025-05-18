@@ -3,40 +3,33 @@ package com.example.tipcalculator
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-// import androidx.compose.animation.core.copy // Not used, can be removed
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button // Ensure this is the M3 Button
-import androidx.compose.material3.ButtonDefaults // Ensure this is the M3 ButtonDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField // Ensure this is the M3 OutlinedTextField
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text // Ensure this is the M3 Text
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-// import androidx.compose.runtime.getValue // Redundant with by delegate
-// import androidx.compose.runtime.setValue // Redundant with by delegate
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color // Standard Color import
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.tipcalculator.ui.theme.TipCalculatorTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            TipCalculatorTheme { // Apply your app's M3 theme
+            TipCalculatorTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background // Use background from M3 colorScheme
+                    color = MaterialTheme.colorScheme.background
                 ) {
                     TipCalculatorScreen()
                 }
@@ -60,18 +53,18 @@ fun TipCalculatorScreen() {
     ) {
         Text(
             text = "Tip Calculator",
-            style = MaterialTheme.typography.headlineSmall, // Using a more appropriate M3 style
-            color = MaterialTheme.colorScheme.primary // Using primary color for the title
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.primary
         )
 
         OutlinedTextField(
             value = amountInput,
             onValueChange = { amountInput = it },
-            label = { Text("Bill Amount") },
+            label = { Text("Please enter the Bill Amount") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            textStyle = MaterialTheme.typography.bodyLarge // Use M3 typography
+            textStyle = MaterialTheme.typography.bodyLarge
         )
 
         Row(
@@ -79,29 +72,33 @@ fun TipCalculatorScreen() {
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             TipButton(percentage = 0.15, text = "15%") {
-                calculateAndDisplayTip(amountInput, 0.15, context) { result ->
+                // Use the new handler function
+                handleTipCalculation(amountInput, 0.15, context) { result ->
                     tipResult = result
                 }
             }
             TipButton(percentage = 0.18, text = "18%") {
-                calculateAndDisplayTip(amountInput, 0.18, context) { result ->
+                handleTipCalculation(amountInput, 0.18, context) { result ->
                     tipResult = result
                 }
             }
             TipButton(percentage = 0.20, text = "20%") {
-                calculateAndDisplayTip(amountInput, 0.20, context) { result ->
+                handleTipCalculation(amountInput, 0.20, context) { result ->
                     tipResult = result
                 }
             }
         }
 
         if (tipResult.isNotEmpty()) {
-            Text(
-                text = tipResult,
-                style = MaterialTheme.typography.titleLarge, // Using a more appropriate M3 style for result
-                color = MaterialTheme.colorScheme.onBackground, // Ensure good contrast
-                modifier = Modifier.padding(top = 24.dp)
-            )
+            val parts = tipResult.split("\n")
+            if (parts.size == 2) { // Check if it's a valid result, not an error indicator
+                Text(
+                    text = tipResult,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(top = 24.dp)
+                )
+            }
         }
     }
 }
@@ -113,33 +110,65 @@ fun TipButton(percentage: Double, text: String, onClick: () -> Unit) {
         modifier = Modifier
             .height(48.dp)
             .defaultMinSize(minWidth = 90.dp),
-        colors = ButtonDefaults.buttonColors( // M3 ButtonDefaults
-            containerColor = MaterialTheme.colorScheme.secondary, // Correct M3 parameter
-            contentColor = MaterialTheme.colorScheme.onSecondary    // Correct M3 parameter, get from theme
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.secondary,
+            contentColor = MaterialTheme.colorScheme.onSecondary
         )
     ) {
-        Text(text, style = MaterialTheme.typography.labelLarge) // Use M3 typography for button text
+        Text(text, style = MaterialTheme.typography.labelLarge)
     }
 }
 
-fun calculateAndDisplayTip(
+/**
+ * Pure Kotlin function that performs the tip calculation logic.
+ * This function is easily unit-testable.
+ *
+ * @param amountInput The bill amount as a string.
+ * @param percentage The tip percentage (e.g., 0.15 for 15%).
+ * @return A formatted string with "Tip: $X.XX\nTotal Bill: $Y.YY" or an empty string if input is invalid.
+ */
+fun calculateTipLogic(
+    amountInput: String,
+    percentage: Double
+): String {
+    val amount = amountInput.toDoubleOrNull()
+
+    if (amount == null || amount <= 0) {
+        return "" // Return empty string to indicate invalid input or error
+    }
+
+    val tip = amount * percentage
+    val total = amount + tip
+    return "Tip: $%.2f\nTotal Bill: $%.2f".format(tip, total)
+}
+
+/**
+ * Handles the tip calculation, including showing a Toast for invalid input
+ * and calling the onResult lambda with the calculation result.
+ * This function calls the pure `calculateTipLogic` function.
+ */
+fun handleTipCalculation(
     amountInput: String,
     percentage: Double,
     context: android.content.Context,
     onResult: (String) -> Unit
 ) {
-    val amount = amountInput.toDoubleOrNull()
+    val resultString = calculateTipLogic(amountInput, percentage)
 
-    if (amount == null || amount <= 0) {
-        android.widget.Toast.makeText(context, "Please enter a valid positive number", android.widget.Toast.LENGTH_SHORT).show()
-        onResult("")
-        return
+    // Show Toast only if calculateTipLogic returned an empty string (indicating an error)
+    // AND the original input was indeed problematic (not just an empty input that should clear the result).
+    // This logic helps avoid showing a toast if the user just clears the input field.
+    val isActualError = resultString.isEmpty() && (amountInput.isNotEmpty() && (amountInput.toDoubleOrNull() == null || amountInput.toDoubleOrNull()!! <= 0))
+
+
+    if (isActualError) {
+        android.widget.Toast.makeText(
+            context,
+            "Please enter a valid positive number",
+            android.widget.Toast.LENGTH_SHORT
+        ).show()
     }
-
-    val tip = amount * percentage
-    val total = amount + tip
-    // Using String.format for locale-aware currency formatting might be better in a real app
-    onResult("Tip: $%.2f\nTotal Bill: $%.2f".format(tip, total))
+    onResult(resultString) // Pass the result (empty or formatted) to the UI
 }
 
 @Preview(showBackground = true)
